@@ -7,25 +7,44 @@ const consoleP = document.getElementById('console');
 
 const TILESIZE=5;
 const TILEW=TILESIZE;
-const TILEH=TILESIZE*1.73205;
+const TILEH=TILESIZE*1.732050807568877;
 const tileViewPivot={
   x:0,
   y:0,
   scale:1,
 }
+const uiViewPivot={
+  
+  scale:1,
+}
 
-function isInsidePolygon(x,y,polygon){
-  // polygon must have vertices[]
-  if (polygon?.vertices==null || polygon.vertices.length==null || polygon.vertices.length===0) return false;
-  const v0=Array.from(polygon.vertices,
-      (v)=>[v[0]*tileViewPivot.scale+canvas.width*0.5+tileViewPivot.x,
-            v[1]*tileViewPivot.scale+canvas.height*0.5+tileViewPivot.y]);
-  const v1=[[v0[0][1]-v0[v0.length-1][1],v0[v0.length-1][0]-v0[0][0]]];
-  const v2=[[x-v0[0][0],y-v0[0][1]]];
+function viewPointToScreenPoint(point,viewType,align){
+  //point == [x,y]
+  //therfore, point.x=>point[0],point.y=>point[1]
+  const result=[0,0];
+  switch (viewType){
+    case "tile" :
+      result[0]=point[0]*tileViewPivot.scale+canvas.width*0.5+tileViewPivot.x;
+      result[1]=point[1]*tileViewPivot.scale+canvas.height*0.5+tileViewPivot.y;
+      return result;
+    case "ui" :
+      
+      break;
+    default:
+
+      break;
+  }
+}
+
+function isInsidePolygon(x,y,v,isFixed){
+  // vertices is list / 221122:polygon?.vertices-->v , v0->v
+  if (v?.length==null || v.length===0) return false;
+  const v1=[[v[0][1]-v[v.length-1][1],v[v.length-1][0]-v[0][0]]];
+  const v2=[[x-v[0][0],y-v[0][1]]];
   const v3=[v1[0][0]*v2[0][0]+v1[0][1]*v2[0][1]];
-  for(let i=1;i<polygon.vertices.length;i++){
-    v1.push([v0[i][1]-v0[i-1][1],v0[i-1][0]-v0[i][0]]);
-    v2.push([x-v0[i][0],y-v0[i][1]]);
+  for(let i=1;i<v.length;i++){
+    v1.push([v[i][1]-v[i-1][1],v[i-1][0]-v[i][0]]);
+    v2.push([x-v[i][0],y-v[i][1]]);
     v3.push([v1[i][0]*v2[i][0]+v1[i][1]*v2[i][1]]);
   }
   return (v3.every(v=>v>=0) || v3.every(v=>v<=0));
@@ -55,7 +74,7 @@ function Tile(q,r,s){
     ctx.translate(canvas.width*0.5+tileViewPivot.x*tileViewPivot.scale,canvas.height*0.5+tileViewPivot.y*tileViewPivot.scale);
     ctx.scale(tileViewPivot.scale,tileViewPivot.scale);
 
-    if (e==null || !isInsidePolygon(e.x,e.y,this)) ctx.fillStyle="#FFFFFF";
+    if (e==null || !isInsidePolygon(e.x,e.y,this.vertices.map(v=>viewPointToScreenPoint(v,"tile")))) ctx.fillStyle="#FFFFFF";
     else ctx.fillStyle="#00FF00";
     ctx.strokeStyle="#000000";
     
@@ -71,19 +90,53 @@ function Tile(q,r,s){
 }
 
 
+const keyEventManager = new function() {
+  this.keyPressOrigin = {}
+  this.keyPressMap = {
+    "moveLeft": "j",
+    "moveRight": "l",
+    "moveUp": "i",
+    "moveDown": "k",
+    "action0": "z",
+    "escape": "Escape",
+  }
+  this.keyPressResult = {
+    "moveLeft": false,
+    "moveRight": false,
+    "moveUp": false,
+    "moveDown": false,
+  }
+}();
+keyEventManager.setKey = function(action,key) {
+  if (action!==undefined && action!==null) this.keyPressMap[action]=key;
+}
+keyEventManager.keyPressUpdate = function() {
+  for (const [key, value] of Object.entries(this.keyPressMap)) {
+    if (this.keyPressOrigin[value]) { this.keyPressResult[key] = true; }
+    else { this.keyPressResult[key] = false; }
+  }
+}
+window.addEventListener('keydown', e => { keyEventManager.keyPressOrigin[e.key] = true; keyEventManager.keyPressUpdate(); });
+window.addEventListener('keyup', e => { keyEventManager.keyPressOrigin[e.key] = false; keyEventManager.keyPressUpdate(); });
 window.addEventListener('resize', e => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   //draw();
 });
-
 window.addEventListener('mousemove', e => {
-  consoleP.textContent=`x: ${e.x} y: ${e.y}`;
-  tile1.draw(e);
-  tile2.draw(e);
-  tile3.draw(e);
-  tile4.draw(e);
+  consoleP.textContent='x: ${e.x} y: ${e.y}';
+  
 });
+window.addEventListener('mouseclick',e=>{
+  
+});
+window.addEventListener('wheel',e=>{
+  
+});
+
+const UI_MainPanel = new function() {
+  
+}();
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
