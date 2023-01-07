@@ -3,6 +3,7 @@ const ctx = canvas.getContext('2d');
 let raf = null;
 
 const consoleP = document.getElementById('console');
+const ccc={};
 
 const SQRT3 = 1.732050807568877;
 const TILESIZE = 5;
@@ -14,7 +15,7 @@ const sprites = {
   "ui_ontile_selected": "resources/ui/ontile/selected0",
 };
 
-
+const fps=[0,0];
 
 //▲ consts
 //▼ managements
@@ -29,7 +30,7 @@ const renderManager = (function() {
     MAXSCALE: 50,
   }
   let uiScale = 1;
-  //closure라는 거 생각보다 마법같네용!
+  //closure라는 거 생각보다 마법같네용! (ㅗ
   return {
     add: function(obj, layer) {
       if (!Array.isArray(renderLayer[layer])) renderLayer[layer] = [];
@@ -108,8 +109,8 @@ const renderManager = (function() {
       result[0] = (x - canvas.width * 0.5) / tileViewPivot.scale - tileViewPivot.x;
 
     },
-    tileViewWheel: function(ds, dx, dy) {
-      if ((tileViewPivot.scale > tileViewPivot.MINSCALE && ds < 0) || (tileViewPivot.scale < tileViewPivot.MAXSCALE && ds > 0)) tileViewPivot.scale += ds;
+    tileViewScroll: function(ds, dx, dy) {
+      if ((tileViewPivot.scale+ds > tileViewPivot.MINSCALE && ds < 0) || (tileViewPivot.scale+ds < tileViewPivot.MAXSCALE && ds > 0)) tileViewPivot.scale += ds;
       if (dx) tileViewPivot.x += dx;
       if (dy) tileViewPivot.y += dy;
     },
@@ -143,12 +144,20 @@ const renderManager = (function() {
       }
       return (v3.every(v => v >= 0) || v3.every(v => v <= 0));
     },
+
+    getTileViewPivot:function(){
+      return {
+        x: tileViewPivot.x,
+        y: tileViewPivot.y,
+        scale: tileViewPivot.scale,
+      }
+    }
   }
 })();
 
 const inputManager = new function() {
-  this.inputTranslate = {
-    mouseWheeToScreenWheel: -0.005,
+  this.inputConsts = {
+    mouseWheelToScreenWheel: -0.005,
   };
   this.keyPressOrigin = {};
   this.keyPressMap = {
@@ -167,15 +176,12 @@ const inputManager = new function() {
     "moreinfo": "Tab"
   };
   this.keyPressResult = {};
-  this.mousePosition = {
+  this.mouse={
     x: 0, y: 0,
-  };
-  this.mouseDown = {
-    initx: 0, inity: 0, isDown: false,
-  };
-  this.mouseWheel = {
-    dx: 0, dy: 0, dz: 0,
-  };
+    prevx:0,prevy:0,dprevx:0,dprevy:0,
+    initx: 0, inity: 0, isDown: 0,
+    wdx: 0, wdy: 0, wdz: 0,
+  }
 }();
 inputManager.setKey = function(action, key) {
   if (action !== undefined && action !== null) this.keyPressMap[action] = key;
@@ -187,10 +193,21 @@ inputManager.keyPressUpdate = function() {
   }
 }
 inputManager.calculate = function() {
-  rm.tileViewWheel(this.inputTranslate.mouseWheeToScreenWheel * this.mouseWheel.dy);
-  this.mouseWheel.dx = 0;
-  this.mouseWheel.dy = 0;
-  this.mouseWheel.dz = 0;
+  if (this.mouse.dprevx!==this.mouse.prevx || this.mouse.dprevy!==this.mouse.prevy){
+    this.mouse.dprevx=this.mouse.prevx;
+    this.mouse.dprevy=this.mouse.prevy;
+  }else{
+    this.mouse.prevx=this.mouse.x;
+    this.mouse.prevy=this.mouse.y;
+  }
+  rm.tileViewScroll(
+    this.inputConsts.mouseWheelToScreenWheel * this.mouse.wdy,
+    this.mouse.isDown?(this.mouse.x-this.mouse.prevx)/rm.getTileViewPivot().scale:0,
+    this.mouse.isDown?(this.mouse.y-this.mouse.prevy)/rm.getTileViewPivot().scale:0
+  );
+  this.mouse.wdx = 0;
+  this.mouse.wdy = 0;
+  this.mouse.wdz = 0;
 }
 
 const mapManager = (function() {
@@ -271,8 +288,8 @@ const tileManager = (function() {
 })();
 
 const gameManager = (function() {
-  const macroState = {};
-  const microState = {};
+  const macroState = [];
+  const microState = [];
   return {
 
   };
@@ -281,7 +298,8 @@ const gameManager = (function() {
 const [rm, im, mm, tm, gm] = [renderManager, inputManager, mapManager, tileManager, gameManager];
 Object.freeze(rm, im, mm, tm, gm);
 
-function isInsideCircumcircle(ax, ay, bx, by, cx, cy, x, y) {
+function isInsideCircumcircle(ax, ay, bx, by, cx, cy,
+                              x, y) {
   sx = [[ax * ax + ay * ay],]
 }
 
@@ -326,7 +344,6 @@ const Tile = (function() {
     }
   }
 })();
-
 
 /*
 const ui_mainPanel = new function() {
@@ -666,20 +683,22 @@ function ui_onTile_SPBar(obj) {
 }
 
 function draw() {
+  fps[0]=Math.round(1000/(Date.now()-fps[1]));
+  fps[1]=Date.now();
+  
   im.calculate();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   rm.drawAll();
-  console.log(";");
+  consoleP.textContent=`fps: ${fps[0]}`
+  // x: ${ccc.x} y: ${ccc.y} dx: ${ccc.dx} dy: ${ccc.dy} dz: ${ccc.dz}`;
   raf = window.requestAnimationFrame(draw);
 }
-
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-mm.footstep(1, 3, 30);
+mm.footstep(1, 3,100);
 tm.initialize();
-
 
 /*const onTile_flyingFrog = new function(tile) {
   this.q = tile.q;
@@ -722,16 +741,11 @@ const newspf = new ui_onTile_SPFrame(onTile_flyingFrog);
 const newspb = new ui_onTile_SPBar(onTile_flyingFrog);
 */
 
-
 raf = window.requestAnimationFrame(draw);
 //const tile1=new Tile(0,0,0);
 //const tile2=new Tile(1,-1,0);
 //const tile3=new Tile(1,0,-1);
 //const tile4=new Tile(-1,1,0);
-
-
-
-
 
 window.addEventListener('keydown', e => { im.keyPressOrigin[e.key] = true; im.keyPressUpdate(); });
 window.addEventListener('keyup', e => { im.keyPressOrigin[e.key] = false; im.keyPressUpdate(); });
@@ -740,8 +754,14 @@ window.addEventListener('resize', e => {
   canvas.height = window.innerHeight;
 });
 window.addEventListener('mousemove', e => {
-  consoleP.textContent = `x: ${e.x} y: ${e.y}`;
+  ccc.x=e.x;
+  ccc.y=e.y;
 
+  im.mouse.prevx=im.mouse.x;
+  im.mouse.prevy=im.mouse.y;
+  im.mouse.x=e.x;
+  im.mouse.y=e.y;
+  
   //ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   /*
@@ -758,10 +778,28 @@ window.addEventListener('mousemove', e => {
   newspb.draw();
   */
 });
+window.addEventListener('mousedown',e=>{
+  if(im.mouse.isDown){
+    im.mouse.isDown++;
+  }else{
+    im.mouse.initx=e.x;
+    im.mouse.inity=e.y;
+    im.mouse.isDown=1;
+  }
+});
+window.addEventListener('mouseup',e=>{
+  im.mouse.isDown=0;
+});
 window.addEventListener('click', e => {
 });
 window.addEventListener('wheel', e => {
-  im.mouseWheel.dx += e.deltaX;
-  im.mouseWheel.dy += e.deltaY;
-  im.mouseWheel.dz += e.deltaZ;
+  ccc.dx=e.deltaX;
+  ccc.dy=e.deltaY;
+  ccc.dz=e.deltaZ;
+  im.mouse.wdx += e.deltaX;
+  im.mouse.wdy += e.deltaY;
+  im.mouse.wdz += e.deltaZ;
 });
+window.addEventListener('contextmenu', e=>{
+  e.preventDefault();
+})
