@@ -11,15 +11,22 @@
       padding: 0;
       overflow: hidden;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 14px;
+      font-size: 20px;
       color: #333;
     }
   </style>
+  <!--script type="module" src="delaunay.js"></script-->
 </head>
 <body>
   <canvas id="canvas" width="240" height="240"></canvas>
-  <p id="console" style="position:absolute; top:0; left:0;">0</p>
-  <script src="script.js"></script>
+  <div id="loading" style="display:flex;background-color:#000;position:absolute;top:0;left:0;width:100%;height:100%;justify-content:center;align-items: center;">
+    <div>
+      <img src="resources/loadingSprite.gif">
+      <h2 style="color:white;">loading</h2>
+    </div>
+  </div>
+  <p id="console" style=" position:absolute; top:0; left:0;">0</p>
+  <script type="module" src="script.js"></script>
 </body>
 
 </html>
