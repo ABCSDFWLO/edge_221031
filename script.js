@@ -1,4 +1,3 @@
-
 import { Delaunay } from "./delaunay.js";
 
 const canvas = document.getElementById('canvas');
@@ -21,11 +20,25 @@ const sprites = {
 
 const fps = [0, 0];
 
+
+const [r_m,r_v,r_w,s_r,v_n,m_w,m_l,m_p]=[
+  document.getElementById("Roughness_Max"),
+  document.getElementById("Roughness_Var"),
+  document.getElementById("Roughness_Width"),
+  document.getElementById("Seed_Range"),
+  document.getElementById("Vertex_Number"),
+  document.getElementById("Map_Width"),
+  document.getElementById("Map_Length"),
+  document.getElementById("Minimal_Probability"),
+];
+const regenbtn=document.getElementById("regenbtn");
+
+
 //▲ consts
 //▼ managements
 
 const renderManager = (function() {
-  const renderLayer = [];
+  let renderLayer = [];
   const tileViewPivot = {
     x: 0,
     y: 0,
@@ -241,11 +254,14 @@ const mapManager = (function() {
   const enemies = [];
   const mapConsts = [
     {
-      VERTEX_NUMBER: 12,
+      VERTEX_NUMBER: 22,
       INIT_MIN_R: 60,
       INIT_MAX_R: 120,
-      SEED_RANGE: 4,
-      
+      SEED_RANGE: 6,
+      MINIMAL_PROBABILITY: 0.12,
+      ROUGHNESS_VARIANCE: 2,
+      ROUGHNESS_MAX: 5,
+      ROUGHNESS_WIDTH: 7,
     },
     {
 
@@ -253,6 +269,24 @@ const mapManager = (function() {
   ];
 
   return {
+    regenerate:function(){
+      loadingScreen.style.display="block";
+      tm.clear();
+      rm.clear();
+      mapConsts[0].ROUGHNESS_MAX=r_m.value;
+      mapConsts[0].ROUGHNESS_VARIANCE=r_v.value;
+      mapConsts[0].ROUGHNESS_WIDTH=r_w.value;
+      mapConsts[0].SEED_RANGE=s_r.value;
+      mapConsts[0].VERTEX_NUMBER=v_n.value;
+      mapConsts[0].INIT_MAX_R=m_l.value;
+      mapConsts[0].INIT_MIN_R=m_w.value;      
+      mapConsts[0].MINIMAL_PROBABILITY=m_p.value;
+      mm.generate(0);
+      tm.initialize();
+      um.initialize();
+      rm.drawAll();
+      setTimeout(() => {loadingScreen.style.display = "none";}, 1000);
+    },
     footstep: function(min, max, tries, seed) {
       let taskQueue = [];
       let tempQueue = [];
@@ -271,7 +305,7 @@ const mapManager = (function() {
           for (let j = 0; j < jj; j++) {
             dirList.splice(Math.trunc(Math.random() * dirList.length), 1);
           }
-          const adjs = tm.tileRelation('adj', tempTile, null);
+          const adjs = tm.getCoordsInDistance(tempTile,1);
           dirList.forEach(v => {
             if (!tm.getTile(adjs[v][0], adjs[v][1], adjs[v][2])) {
               const ttile = tm.setTile(adjs[v][0], adjs[v][1], adjs[v][2]);
@@ -308,7 +342,6 @@ const mapManager = (function() {
         }
         if (tmpflag) initVertices.push(tm.setTile(qq, rr, ss));
       }
-      console.log(tmpdir);
       //▲ hexagonal pillar -> seed
 
       
@@ -324,6 +357,7 @@ const mapManager = (function() {
       let startSeed,endSeed=null;
       //▲ seed classification(structure allocating)
 
+      
       const tmp_dv=[];
       for (const i of initVertices) tmp_dv.push([i?.q*3*TILEW,(i?.s*2+i?.q)*TILEH]);
       const tmpd = Delaunay.triangulate(tmp_dv);
@@ -331,36 +365,89 @@ const mapManager = (function() {
       for (let i = 0; i<tmpd.length;i++){
         switch(i%3){
           case 0:
-            (initVertices[tmpd[i+1]]
-          case 1:
+          case 1: 
+            var tmparr=[initVertices[tmpd[i]],initVertices[tmpd[i+1]]];
           case 2:
-            tmpd[i-2]
+            if (!tmparr) var tmparr=[initVertices[tmpd[i]],initVertices[tmpd[i-2]]];
+            if (edges.findIndex(e=>{
+              const a=JSON.stringify(e);
+              const b=JSON.stringify(e.reverse);
+              const c=JSON.stringify(tmparr);
+              return (a===c || b===c);
+            })<0){
+              edges.push(tmparr);
+            }
+            break;
         }
       }
       //▲ delaunay
 
-      //▲ mst
+      const edges_weight=edges.map(e=>[initVertices.findIndex(f=>f===e[0]),initVertices.findIndex(f=>f===e[1]),tm.getDistance(e[0],e[1])]).sort((a,b)=>a[2]-b[2]);
+      const edges_excluded=[];
+      const edges_included=[];
+      const union_find_tree=(function (){
+        let root=Array(initVertices.length).fill(0).map((v,i)=>i); 
+        const taskStack=[];
+        return {
+          union:function(a,b){
+            const x=this.find(a);
+            const y=this.find(b);
+            root[y]=x;
+          },
+          find:function(x){
+            if (root[x]===x){
+              return x;
+            } else {
+              return this.find(root[x]);
+            }
+          },
+          isCycle:function(a,b){
+            return this.find(a)===this.find(b);
+          },
+        }
+      })();
+      for (const i of edges_weight){
+        if (union_find_tree.isCycle(i[0],i[1])&&Math.random()>mapConsts[level].MINIMAL_PROBABILITY) {
+          edges_excluded.push([initVertices[i[0]],initVertices[i[1]]]);
+        }else{
+          edges_included.push([initVertices[i[0]],initVertices[i[1]]]);
+          union_find_tree.union(i[0],i[1]);
+        }
+      }
+      //▲ mst(yet not minimal...)
 
       //▲ bonus (not yet)
+      
+      const footstepSeed=[];
 
+      for (const [i,j] of edges_included){
+        const line_coords=tm.getCoordsOnLine(i,j);
+        for (const k of line_coords) {
+          if (!tm.getTile(k[0],k[1],k[2])) footstepSeed.push(tm.setTile(k[0],k[1],k[2]));
+        }
+      }
       //▲ stroke paths
       
+
       for (const i of initVertices){
-        const widen = tm.tileRelation("range",i,null,mapConsts[level].SEED_RANGE);
+        const widen = tm.getCoordsInDistance(i,mapConsts[level].SEED_RANGE);
         if ((tmpdir[0]===0?i?.r:i?.q)===tmp_StartSeedCoord) startSeed=i;
         if ((tmpdir[0]===0?i?.r:i?.q)===tmp_EndSeedCoord) endSeed=i;
         for (const j of widen) {
-          if (!tm.getTile(j[0],j[1],j[2])) tm.setTile(j[0],j[1],j[2]);
+          if (!tm.getTile(j[0],j[1],j[2])) footstepSeed.push(tm.setTile(j[0],j[1],j[2]));
         }
       }
       //▲ seed widening
+
+      this.footstep(6-mapConsts[level].ROUGHNESS_MAX,Math.min(6-mapConsts[level].ROUGHNESS_MAX+mapConsts[level].ROUGHNESS_VARIANCE),mapConsts[level].ROUGHNESS_WIDTH,footstepSeed);
+      //▲ roughing
       
     },
   };
 })();
 const tileManager = (function() {
   //221212 closure implement
-  const tiles = {};
+  let tiles = {};
   return {
     initialize: function() {
       Object.values(tiles).forEach(v => {
@@ -380,78 +467,51 @@ const tileManager = (function() {
       return tiles[q * 1024 + r];
       //DISCLAIMER:do not call this method except mapGenerator
     },
+    clear: function(){
+      tiles={};
+    },
 
-    tileRelation: function(type, seed, isthis, arg0, arg1, arg2) {
-      const result = [];
-      switch (type) {
-        case 'a':
-        case 'adj':
-        case 'adjacent':
-          arg0 = 1;
-        case 'range':
-          // arg0:range
-          if (isthis) {
-            if (Array.isArray(isthis)) {
-              if (isthis[0] <= arg0 && isthis[0] >= -arg0 &&
-                isthis[1] <= arg0 && isthis[1] >= -arg0 &&
-                isthis[2] <= arg0 && isthis[2] >= -arg0) {
-                return true;
-              } else {
-                return false;
-              }
-            } else if (isthis instanceof Tile) {
-              if (isthis.q <= arg0 && isthis.q >= -arg0 &&
-                isthis.r <= arg0 && isthis.r >= -arg0 &&
-                isthis.s <= arg0 && isthis.s >= -arg0) {
-                return true;
-              } else {
-                return false;
-              }
-            } else {
-              return null;
-            }
-          } else {
-            let s=true;
-            if (seed){
-              if (Array.isArray(seed)){ s=true; }
-              else if (seed instanceof Tile){ s=false; }
-              else { return null; }
-            } else { return null; }
-            for (let iq = -arg0; iq <= arg0; iq++) {
-              for (let ir = Math.max(-arg0, -arg0 - iq); ir <= Math.min(arg0, arg0 - iq); ir++) {
-                const is = -iq - ir;
-                result.push([(s?s[0]:seed?.q) + iq, (s?s[1]:seed?.r) + ir, (s?s[2]:seed?.s) + is]);
-              }
-            }
-          }
-          //console.log(result);
-          return result;
-          break;
-        case 'line':
-          let s,t=true;
-          if (isthis){
-              if (Array.isArray(isthis)){ t=true; }
-              else if (isthis instanceof Tile){ t=false; }
-              else { return null; }
-          } else { return null; }
-          if (seed){
-              if (Array.isArray(seed)){ s=true; }
-              else if (seed instanceof Tile){ s=false; }
-              else { return null; }
-          } else { return null; }
-          const cstart=[(s?seed[0]:seed.q)*3*TILEW,((s?seed[2]:seed.s)*2+(s?seed[0]:seed.q))*TILEH];
-          const cend=[(s?isthis[0]:isthis.q)*3*TILEW,((s?isthis[2]:isthis.s)*2+(s?isthis[0]:isthis.q))*TILEH];
-          return result;
-          break;
-      }
-    },
     isInDistance: function(from, to, dist) {
-      
+      if (from && to && dist){
+        const tf=from instanceof Tile?[from.q,from.r,from.s]:from;
+        const tt=to instanceof Tile?[to.q,to.r,to.s]:to;
+        return (
+          tt[0]-tf[0]<=dist&&tt[0]-tf[0]>=-dist
+          && tt[1]-tf[1]<=dist&&tt[1]-tf[1]>=-dist
+          && tt[2]-tf[2]<=dist&&tt[2]-tf[2]>=-dist
+        );
+      }else { return null; }
     },
-    getCoordsInDistance: function(from, to, dist){
-      
+
+    getCoordsInDistance: function(from, dist){
+      if (from && dist){
+        const tf=from instanceof Tile?[from.q,from.r,from.s]:from;
+        const result=[];  
+        for (let iq = -dist; iq <= dist; iq++) {
+          for (let ir = Math.max(-dist, -dist - iq); ir <= Math.min(dist, dist - iq); ir++) {
+            const is = -iq - ir;
+            result.push([tf[0]+iq, tf[1] + ir, tf[2] + is]);
+          }
+        }
+        return result;
+      }else {return null;}
     },
-    
+    getCoordsOnLine: function(from, to){
+      if (from && to){
+        const tf=from instanceof Tile?[from.q,from.r,from.s]:from;
+        const tt=to instanceof Tile?[to.q,to.r,to.s]:to;
+        const dist=this.getDistance(from,to);
+        return Array(dist+1).fill(0).map((v,i)=>rm.tileViewPointRound([tf[0]+(tt[0]-tf[0])/dist*i,tf[1]+(tt[1]-tf[1])/dist*i,tf[2]+(tt[2]-tf[2])/dist*i]));
+      }else { return null; }
+    },
+    getDistance: function(from, to){
+      if(from && to){
+        const tf=from instanceof Tile?[from.q,from.r,from.s]:from;
+        const tt=to instanceof Tile?[to.q,to.r,to.s]:to;
+        return Math.max(Math.abs(tt[0]-tf[0]),Math.abs(tt[1]-tf[1]),Math.abs(tt[2]-tf[2]));
+      }else {return null;}
+    },
+
     
     console: (arg) => {
       switch (arg) {
@@ -779,7 +839,7 @@ const uiManager = (function() {
       }
     },
     display: function(name, position) {
-      if (!Object.keys(pool).includes(name)) { console.log(111); return null; }
+      if (!Object.keys(pool).includes(name)) { return null; }
       if (pool[name].length > 0) {
         const tempui = pool[name].pop();
         if (name.includes("ontile")) {
@@ -995,10 +1055,10 @@ mm.generate(0);
 tm.initialize();
 um.initialize();
 rm.drawAll();
-setTimeout(() => { }, "6000");
-loadingScreen.style.display = "none";
+setTimeout(() => {loadingScreen.style.display = "none";}, 1000);
 
-/*const onTile_flyingFrog = new function(tile) {
+/*
+const onTile_flyingFrog = new function(tile) {
   this.q = tile.q;
   this.r = tile.r;
   this.s = tile.s;
@@ -1080,4 +1140,11 @@ window.addEventListener('wheel', e => {
 });
 window.addEventListener('contextmenu', e => {
   e.preventDefault();
-})
+});
+
+
+regenbtn.addEventListener('click',mm.regenerate);
+
+//▲ 
+//▼ utils
+

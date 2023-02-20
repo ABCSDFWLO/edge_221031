@@ -26,6 +26,25 @@
     </div>
   </div>
   <p id="console" style=" position:absolute; top:0; left:0;">0</p>
+  <div id="debug" style="display:flex; flex-direction: column; position:absolute; top:80px; left:0;">
+    <input type="range" id="Roughness_Max" name="Roughness_Max" min="0" max="6" value="5" step="1">
+    <label for="Roughness_Max">Roughness_Max (0~6)</label>
+    <input type="range" id="Roughness_Var" name="Roughness_Var" min="0" max="6" value="5" step="1">
+    <label for="Roughness_Var">Roughness_Var (0~6)</label>
+    <input type="range" id="Roughness_Width" name="Roughness_Width" min="0" max="52" value="5" step="1">
+    <label for="Roughness_Width">Roughness_Width</label>
+    <input type="range" id="Seed_Range" name="Seed_Range" min="0" max="52" value="5" step="1">
+    <label for="Seed_Range">Seed_Range</label>
+    <input type="range" id="Vertex_Number" name="Vertex_Number" min="2" max="52" value="15" step="1">
+    <label for="Vertex_Number">Vertex_Number</label>
+    <input type="range" id="Map_Width" name="Map_Width" min="10" max="500" value="60" step="10">
+    <label for="Map_Width">Map_Width</label>
+    <input type="range" id="Map_Length" name="Map_Length" min="10" max="1000" value="120" step="10">
+    <label for="Map_Length">Map_Length</label>
+    <input type="range" id="Minimal_Probability" name="Minimal_Probability" min="0" max="1" value="0.1" step="0.01">
+    <label for="Minimal_Probability">Minimal_Probability</label>
+    <button id="regenbtn">regen</button>
+  </div>
   <script type="module" src="script.js"></script>
 </body>
 
