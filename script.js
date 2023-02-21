@@ -270,17 +270,17 @@ const mapManager = (function() {
 
   return {
     regenerate:function(){
-      loadingScreen.style.display="block";
+      loadingScreen.style.display="flex";
       tm.clear();
       rm.clear();
-      mapConsts[0].ROUGHNESS_MAX=r_m.value;
-      mapConsts[0].ROUGHNESS_VARIANCE=r_v.value;
-      mapConsts[0].ROUGHNESS_WIDTH=r_w.value;
-      mapConsts[0].SEED_RANGE=s_r.value;
-      mapConsts[0].VERTEX_NUMBER=v_n.value;
-      mapConsts[0].INIT_MAX_R=m_l.value;
-      mapConsts[0].INIT_MIN_R=m_w.value;      
-      mapConsts[0].MINIMAL_PROBABILITY=m_p.value;
+      mapConsts[0].ROUGHNESS_MAX=parseInt(r_m.value);
+      mapConsts[0].ROUGHNESS_VARIANCE=parseInt(r_v.value);
+      mapConsts[0].ROUGHNESS_WIDTH=parseInt(r_w.value);
+      mapConsts[0].SEED_RANGE=parseInt(s_r.value);
+      mapConsts[0].VERTEX_NUMBER=parseInt(v_n.value);
+      mapConsts[0].INIT_MAX_R=parseInt(m_l.value);
+      mapConsts[0].INIT_MIN_R=parseInt(m_w.value);      
+      mapConsts[0].MINIMAL_PROBABILITY=parseInt(m_p.value);
       mm.generate(0);
       tm.initialize();
       um.initialize();
@@ -318,7 +318,6 @@ const mapManager = (function() {
       }
     },
     generate: function(level) {
-
       const initVertices = []; //seeds
       const tmpdir = [0, 0, 0]; //pillar direction
       for (let i = 0; i < 3; i++) {
@@ -343,7 +342,6 @@ const mapManager = (function() {
         if (tmpflag) initVertices.push(tm.setTile(qq, rr, ss));
       }
       //▲ hexagonal pillar -> seed
-
       
       const tmp_StartOrEnd=Math.random()-0.5>0;
       const tmp_StartSeedCoord=
@@ -356,7 +354,6 @@ const mapManager = (function() {
         Math.min(...initVertices.map(e=>tmpdir[0]===0?e?.r:e?.q));
       let startSeed,endSeed=null;
       //▲ seed classification(structure allocating)
-
       
       const tmp_dv=[];
       for (const i of initVertices) tmp_dv.push([i?.q*3*TILEW,(i?.s*2+i?.q)*TILEH]);
@@ -427,7 +424,6 @@ const mapManager = (function() {
         }
       }
       //▲ stroke paths
-      
 
       for (const i of initVertices){
         const widen = tm.getCoordsInDistance(i,mapConsts[level].SEED_RANGE);
@@ -438,10 +434,9 @@ const mapManager = (function() {
         }
       }
       //▲ seed widening
-
-      this.footstep(6-mapConsts[level].ROUGHNESS_MAX,Math.min(6-mapConsts[level].ROUGHNESS_MAX+mapConsts[level].ROUGHNESS_VARIANCE),mapConsts[level].ROUGHNESS_WIDTH,footstepSeed);
+      console.log(mapConsts[level].ROUGHNESS_VARIANCE,mapConsts[level].ROUGHNESS_MAX,6 - mapConsts[level].ROUGHNESS_MAX + mapConsts[level].ROUGHNESS_VARIANCE)
+      this.footstep(6-mapConsts[level].ROUGHNESS_MAX,Math.min(6-mapConsts[level].ROUGHNESS_MAX+mapConsts[level].ROUGHNESS_VARIANCE,6),mapConsts[level].ROUGHNESS_WIDTH,footstepSeed);
       //▲ roughing
-      
     },
   };
 })();
