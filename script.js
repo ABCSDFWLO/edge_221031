@@ -14,7 +14,8 @@ const TILEW = TILESIZE;
 const TILEH = TILESIZE * SQRT3;
 
 const sprites = {
-  "tile_proto": "resources/tile/tile_p_0.png",
+  "title_illust":"resources/ui/title/title_illustration_0.png",
+  "tile_proto": "resources/tile/tile_p_1.png",
   "ui_ontile_selected": "resources/ui/ontile/selected1.png",
 };
 
@@ -197,6 +198,7 @@ const renderManager = (function() {
         x: tileViewPivot.x,
         y: tileViewPivot.y,
         scale: tileViewPivot.scale,
+        uiScale: tileViewPivot.uiScale,
       }
     },
 
@@ -463,11 +465,11 @@ const tileManager = (function() {
       if (q + r + s !== 0) return null;
       else return tiles[q * 1024 + r] ?? null;
     },
-    setTile: function(q, r, s, tile) {
+    setTile: function(q, r, s, tile, sprite, hsl) {
       if (!s) s = -q - r;
       if (q + r + s !== 0) return null;
       if (tile) tiles[q * 1024 + r] = tile;
-      else tiles[q * 1024 + r] = new Tile(q, r, s, "tile_proto");
+      else tiles[q * 1024 + r] = new Tile(q, r, s, sprite??"tile_proto",hsl??["180deg","80%","80%"]);
       return tiles[q * 1024 + r];
       //DISCLAIMER:do not call this method except mapGenerator
     },
@@ -789,7 +791,7 @@ const uiManager = (function() {
     rm.add(this, 12);
   }();*/
   
-  const ui_titleScene = new function() {
+  const scene_title = new function() {
     this.align = {
       upper: canvas,
       x: "xstretch",
@@ -803,51 +805,18 @@ const uiManager = (function() {
     };
     this.uid = uid++;
     this.layer = 15;
-    this.originVertices = [[0,0],[0,canvas.height],[canvas.width,canvas.height],[canvas.width,0]];
     this.draw = function() {
       ctx.save();
 
-      this.vertices = this.originVertices.map(v => rm.viewPointToScreenPoint(v, "ui", this.align));
-
+      this.align.right=canvas.width;
+      this.align.bottom=canvas.height;
+      this.align.xcenter=canvas.width*0.5;
+      this.align.ycenter=canvas.height*0.5;
+            
       ctx.strokeStyle = "#000000";
 
       ctx.beginPath();
-      ctx.moveTo(this.vertices[0][0], this.vertices[0][1]);
-      this.vertices.forEach(v => ctx.lineTo(v[0], v[1]));
-      ctx.closePath();
-      ctx.stroke();
-      ctx.fill();
-
-      ctx.restore();
-    };
-    pool.single[this.uid] = this;
-  }();
-  const ui_titleScene_titlePanel = new function() {
-    this.align = {
-      upper: ui_titleScene,
-      x: "xcenter",
-      y: "bottom",
-      "left": 0,
-      "right": 500,
-      "top": 0,
-      "bottom": 50,
-      "xcenter": 250,
-      "ycenter": 25,
-    };
-    this.uid = uid++;
-    this.layer = 11;
-    this.originVertices = [[0,0], [500, 0], [500, 50], [0, 50]];
-    this.draw = function() {
-      ctx.save();
-
-      this.vertices = this.originVertices.map(v => rm.viewPointToScreenPoint(v, "ui", this.align));
-
-      ctx.strokeStyle = "#555555";
-      ctx.fillStyle = "#555555"
-
-      ctx.beginPath();
-      ctx.moveTo(this.vertices[0][0], this.vertices[0][1]);
-      this.vertices.forEach(v => ctx.lineTo(v[0], v[1]));
+      ctx.rect(0,0,canvas.width,canvas.height);
       ctx.closePath();
       ctx.stroke();
       ctx.fill();
@@ -858,25 +827,25 @@ const uiManager = (function() {
   }();
   const ui_titleScene_title = new function() {
     this.align = {
-      upper: ui_titleScene,
+      upper: scene_title,
       x: "left",
-      y: "top",
-      "left":0,
+      y: "ycenter",
+      "left":20,
       "right":0,
-      "top":40,
+      "top":-300,
       "bottom":0,
       "xcenter":0,
-      "ycenter":5*SQRT3,
+      "ycenter":-220,
     };
     this.uid = uid++;
 
-    this.layer = 16;
+    this.layer = 17;
     this.draw = function() {
       ctx.save();
   
-      const fontSize = 40;
+      const fontSize = 160;
       const text = "여섯번째 밤";
-      const pivot = rm.viewPointToScreenPoint([-fontSize * text.length * 0.275, fontSize * 0.5], "ui", this.align);
+      const pivot = rm.viewPointToScreenPoint([this.align.left, this.align.ycenter], "ui", this.align);
   
       ctx.fillStyle = "#FFFFFF";
       ctx.font = (fontSize * rm.getTileViewPivot().uiScale) + "px RIDIBatang";
@@ -884,6 +853,35 @@ const uiManager = (function() {
   
       ctx.restore();
     }
+    pool.single[this.uid] = this;
+  }();
+  const ui_titleScene_illustration = new function() {
+    this.align = {
+      upper: scene_title,
+      x: "right",
+      y: "bottom",
+      "left": -940,
+      "right": -20,
+      "top": -666,
+      "bottom": -20,
+      "xcenter": -480,
+      "ycenter": -343,
+    };
+    this.uid = uid++;
+    this.layer = 16;
+    this.sprite=new Image();
+    this.sprite.src=sprites["title_illust"];
+
+    this.sprite=
+    this.draw = function() {
+      ctx.save();
+
+      const pivot=rm.viewPointToScreenPoint([this.left,this.top],"ui",this.align);
+
+      ctx.drawImage(this.sprite,pivot[0],pivot[1],this.align.right-this.align.left,this.align.bottom-this.align.top);
+
+      ctx.restore();
+    };
     pool.single[this.uid] = this;
   }();
  
@@ -1026,13 +1024,14 @@ const gameManager = (function() {
 const [rm, im, mm, tm, gm, um] = [renderManager, inputManager, mapManager, tileManager, gameManager, uiManager];
 Object.freeze(rm, im, mm, tm, gm, um);
 
-const Tile = function(qq, rr, ss, sprite) {
+const Tile = function(qq, rr, ss, sprite, hsl) {
   if (qq + rr + ss !== 0) return null;
   this.q = qq;
   this.r = rr;
   this.s = ss;
   this.sprite = new Image();
   this.sprite.src = sprites[sprite] ?? sprites["tile_proto"];
+  this.hsl = hsl;
 
 
   this.onTileObj = null;
@@ -1050,6 +1049,7 @@ const Tile = function(qq, rr, ss, sprite) {
 
       ctx.translate(renderer.tx, renderer.ty);
       ctx.scale(renderer.ts, renderer.ts);
+      ctx.filter = `hue-rotate(${this.hsl[0]}) saturate(${this.hsl[1]}) brightness(${this.hsl[2]})`;
       ctx.drawImage(this.sprite, renderer.x, renderer.y, renderer.dx, renderer.dy);
 
 
