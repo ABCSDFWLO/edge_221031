@@ -6,11 +6,24 @@
   <meta name="viewport" content="width=device-width">
   <title></title>
   <style>
+    @font-face {
+    font-family: 'RIDIBatang';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/RIDIBatang.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    /*
+    리디바탕 글꼴은 개인 및 기업 사용자를 포함한 모든 사용자에게 무료로 제공되며 자유롭게 수정하고 재배포하실 수 있습니다.
+    단, 글꼴 자체를 유료로 판매하는 것은 금지하며, 리디바탕 글꼴은 본 저작권 안내와 라이선스 전문을 포함해서 다른 소프트웨어와 번들하거나 재배포 또는 판매가 가능합니다.
+    라이선스 전문을 포함하기 어려울 경우, 리디바탕 글꼴의 출처 표기를 권장합니다. 예) 이 페이지는 리디주식회사에서 제공한 리디바탕 글꼴이 사용되어 있습니다.
+    This Font Software is licensed under the SIL Open Font License, Version 1.1.
+    리디바탕의 저작권은 리디주식회사가 소유하고 있습니다.
+    */
+    }
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-family: 'RIDIBatang', Sans-serif;
       font-size: 20px;
       color: #333;
     }
@@ -36,7 +49,7 @@
     <input type="range" id="Roughness_Width" name="Roughness_Width" min="0" max="52" value="5" step="1">
     <label for="Roughness_Width">Roughness_Width</label>
     <br>
-    <input type="range" id="Seed_Range" name="Seed_Range" min="0" max="52" value="5" step="1">
+    <input type="range" id="Seed_Range" name="Seed_Range" min="1" max="52" value="5" step="1">
     <label for="Seed_Range">Seed_Range</label>
     <br>
     <input type="range" id="Vertex_Number" name="Vertex_Number" min="2" max="52" value="15" step="1">

@@ -6,7 +6,7 @@ let raf = null;
 
 const consoleP = document.getElementById('console');
 const loadingScreen = document.getElementById('loading');
-const ccc = {};
+const cs = {};
 
 const SQRT3 = 1.732050807568877;
 const TILESIZE = 5;
@@ -43,10 +43,10 @@ const renderManager = (function() {
     x: 0,
     y: 0,
     scale: 0.2,
+    uiScale : 1,
     MINSCALE: 1,
     MAXSCALE: 50,
   }
-  let uiScale = 1;
   return {
     add: function(obj, layer) {
       if (!Array.isArray(renderLayer[layer])) renderLayer[layer] = [];
@@ -94,9 +94,12 @@ const renderManager = (function() {
             result[1] += al.upper.align[al.y];
             al = al.upper.align;
           }
-          result[0] *= uiScale;
-          result[1] *= uiScale;
+          result[0] *= tileViewPivot.uiScale;
+          result[1] *= tileViewPivot.uiScale;
           switch (al.x) {
+            case "xcursor":
+              result[0] += im.mouse.x;
+              break;
             case "xcenter":
               result[0] += canvas.width * 0.5;
               break;
@@ -105,6 +108,9 @@ const renderManager = (function() {
               break;
           }
           switch (al.y) {
+            case "ycursor":
+              result[1] += im.mouse.y;
+              break;
             case "ycenter":
               result[1] += canvas.height * 0.5;
               break;
@@ -271,21 +277,23 @@ const mapManager = (function() {
   return {
     regenerate:function(){
       loadingScreen.style.display="flex";
-      tm.clear();
-      rm.clear();
-      mapConsts[0].ROUGHNESS_MAX=parseInt(r_m.value);
-      mapConsts[0].ROUGHNESS_VARIANCE=parseInt(r_v.value);
-      mapConsts[0].ROUGHNESS_WIDTH=parseInt(r_w.value);
-      mapConsts[0].SEED_RANGE=parseInt(s_r.value);
-      mapConsts[0].VERTEX_NUMBER=parseInt(v_n.value);
-      mapConsts[0].INIT_MAX_R=parseInt(m_l.value);
-      mapConsts[0].INIT_MIN_R=parseInt(m_w.value);      
-      mapConsts[0].MINIMAL_PROBABILITY=parseInt(m_p.value);
-      mm.generate(0);
-      tm.initialize();
-      um.initialize();
-      rm.drawAll();
+      setTimeout(()=>{
+        tm.clear();
+        rm.clear();
+        mapConsts[0].ROUGHNESS_MAX=parseInt(r_m.value);
+        mapConsts[0].ROUGHNESS_VARIANCE=parseInt(r_v.value);
+        mapConsts[0].ROUGHNESS_WIDTH=parseInt(r_w.value);
+        mapConsts[0].SEED_RANGE=parseInt(s_r.value);
+        mapConsts[0].VERTEX_NUMBER=parseInt(v_n.value);
+        mapConsts[0].INIT_MAX_R=parseInt(m_l.value);
+        mapConsts[0].INIT_MIN_R=parseInt(m_w.value);      
+        mapConsts[0].MINIMAL_PROBABILITY=parseInt(m_p.value);
+        mm.generate(0);
+        tm.initialize();
+        um.initialize();
+        rm.drawAll();
       setTimeout(() => {loadingScreen.style.display = "none";}, 1000);
+      },1000);
     },
     footstep: function(min, max, tries, seed) {
       let taskQueue = [];
@@ -448,6 +456,7 @@ const tileManager = (function() {
       Object.values(tiles).forEach(v => {
         rm.add(v, 1);
       });
+      cs.tile_number=Object.keys(tiles).length;
     },
     //q*1024 + r == index
     getTile: function(q, r, s) {
@@ -507,12 +516,8 @@ const tileManager = (function() {
       }else {return null;}
     },
 
-    
-    console: (arg) => {
-      switch (arg) {
-        case "len":
-          return Object.keys(tiles).length;
-      }
+    getData(){
+      return tiles;
     }
   }
 })();
@@ -783,6 +788,105 @@ const uiManager = (function() {
   
     rm.add(this, 12);
   }();*/
+  
+  const ui_titleScene = new function() {
+    this.align = {
+      upper: canvas,
+      x: "xstretch",
+      y: "ystretch",
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "xcenter": 0,
+      "ycenter": 0,
+    };
+    this.uid = uid++;
+    this.layer = 15;
+    this.originVertices = [[0,0],[0,canvas.height],[canvas.width,canvas.height],[canvas.width,0]];
+    this.draw = function() {
+      ctx.save();
+
+      this.vertices = this.originVertices.map(v => rm.viewPointToScreenPoint(v, "ui", this.align));
+
+      ctx.strokeStyle = "#000000";
+
+      ctx.beginPath();
+      ctx.moveTo(this.vertices[0][0], this.vertices[0][1]);
+      this.vertices.forEach(v => ctx.lineTo(v[0], v[1]));
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+
+      ctx.restore();
+    };
+    pool.single[this.uid] = this;
+  }();
+  const ui_titleScene_titlePanel = new function() {
+    this.align = {
+      upper: ui_titleScene,
+      x: "xcenter",
+      y: "bottom",
+      "left": 0,
+      "right": 500,
+      "top": 0,
+      "bottom": 50,
+      "xcenter": 250,
+      "ycenter": 25,
+    };
+    this.uid = uid++;
+    this.layer = 11;
+    this.originVertices = [[0,0], [500, 0], [500, 50], [0, 50]];
+    this.draw = function() {
+      ctx.save();
+
+      this.vertices = this.originVertices.map(v => rm.viewPointToScreenPoint(v, "ui", this.align));
+
+      ctx.strokeStyle = "#555555";
+      ctx.fillStyle = "#555555"
+
+      ctx.beginPath();
+      ctx.moveTo(this.vertices[0][0], this.vertices[0][1]);
+      this.vertices.forEach(v => ctx.lineTo(v[0], v[1]));
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+
+      ctx.restore();
+    };
+    pool.single[this.uid] = this;
+  }();
+  const ui_titleScene_title = new function() {
+    this.align = {
+      upper: ui_titleScene,
+      x: "left",
+      y: "top",
+      "left":0,
+      "right":0,
+      "top":40,
+      "bottom":0,
+      "xcenter":0,
+      "ycenter":5*SQRT3,
+    };
+    this.uid = uid++;
+
+    this.layer = 16;
+    this.draw = function() {
+      ctx.save();
+  
+      const fontSize = 40;
+      const text = "여섯번째 밤";
+      const pivot = rm.viewPointToScreenPoint([-fontSize * text.length * 0.275, fontSize * 0.5], "ui", this.align);
+  
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = (fontSize * rm.getTileViewPivot().uiScale) + "px RIDIBatang";
+      ctx.fillText(text, pivot[0], pivot[1]);
+  
+      ctx.restore();
+    }
+    pool.single[this.uid] = this;
+  }();
+ 
 
   //▲ single
   //▼ protos
@@ -1025,7 +1129,7 @@ function draw() {
   fps[0] = Math.round(1000 / (Date.now() - fps[1]));
   fps[1] = Date.now();
 
-  consoleP.textContent = `${tm.console("len")} fps: ${fps[0]}`
+  consoleP.textContent = `tiles: ${cs?.tile_number??null} fps: ${fps[0]}`
 
 
   const r = rm.tileViewPointRound(rm.screenPointToTileViewPoint([im.mouse.x, im.mouse.y]));
@@ -1089,10 +1193,9 @@ const onTile_flyingFrog = new function(tile) {
  
   rm.add(this, 2);
 }(tm.getTile(0, 0, 0));
- 
-const newspf = new ui_onTile_SPFrame(onTile_flyingFrog);
-const newspb = new ui_onTile_SPBar(onTile_flyingFrog);
 */
+//const newspf = new ui_onTile_SPFrame(onTile_flyingFrog);
+//const newspb = new ui_onTile_SPBar(onTile_flyingFrog);
 
 raf = window.requestAnimationFrame(draw);
 
@@ -1103,8 +1206,8 @@ window.addEventListener('resize', e => {
   canvas.height = window.innerHeight;
 });
 window.addEventListener('mousemove', e => {
-  ccc.x = e.x;
-  ccc.y = e.y;
+  cs.x = e.x;
+  cs.y = e.y;
 
   im.mouse.prevx = im.mouse.x;
   im.mouse.prevy = im.mouse.y;
@@ -1126,9 +1229,9 @@ window.addEventListener('mouseup', e => {
 window.addEventListener('click', e => {
 });
 window.addEventListener('wheel', e => {
-  ccc.dx = e.deltaX;
-  ccc.dy = e.deltaY;
-  ccc.dz = e.deltaZ;
+  cs.dx = e.deltaX;
+  cs.dy = e.deltaY;
+  cs.dz = e.deltaZ;
   im.mouse.wdx += e.deltaX;
   im.mouse.wdy += e.deltaY;
   im.mouse.wdz += e.deltaZ;
